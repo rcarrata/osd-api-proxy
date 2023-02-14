@@ -1,0 +1,40 @@
+---
+
+- name: Obtain all the Master Instance Groups
+  gcp_compute_instance_group_info:
+    zone: "{{ gcp_zone }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+  register: master_instance_group_raw
+
+- name: Select the proper Master Instance Group
+  set_fact:
+    master_instance_group: "{{ item.selfLink }}"
+  loop: "{{ master_instance_group_raw.resources }}"
+  when: '"{{ cluster_name_prefix }}" in item.name'
+
+- name: Find the Health Check
+  gcp_compute_health_check_info:
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+  register: health_check_lb_raw
+
+- name: Select the proper LB
+  set_fact:
+    health_check_lb: "{{ item.selfLink }}"
+  loop: "{{ health_check_lb_raw.resources }}"
+  when: '"{{ cluster_name_prefix }}" in item.name'
+
+- name: Create a LB Backend Service and add into the Master Instance Group
+  google.cloud.gcp_compute_backend_service:
+    name: "{{ lb_backend_service }}"
+    backends:
+    - group: "{{ master_instance_group }}"
+    health_checks:
+    - "{{ health_check_lb }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: present

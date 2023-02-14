@@ -6,13 +6,12 @@
   #   - vault/vault.yml
   #   - vars/common.yml
   #   - "vars/{{ lab_name }}.yml"
-  become: true
   tasks:
 
     - name: OSD in GCP - Generate Certificates for GCP LB
       ansible.builtin.include_role:
-        name: "osd-lb-certs"
+        name: "osd-proxy-certs"
 
     - name: OSD in GCP - Create and Config LB Infra
       ansible.builtin.include_role:
-        name: "osd-infra-proxy"
+        name: "osd-proxy-infra"

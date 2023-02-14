@@ -1,0 +1,5 @@
+---
+# tasks file for osd-lb-certs
+
+- include_tasks: gcp-infra.yml
+- include_tasks: gcp-certs.yml

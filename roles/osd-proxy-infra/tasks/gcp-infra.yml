@@ -1,5 +1,6 @@
 ---
-
+# Remember to define the proper gcp_zone, and name of the cluster because
+# will fetch the Master Instance Groups using this specific groups
 - name: Obtain all the Master Instance Groups
   gcp_compute_instance_group_info:
     zone: "{{ gcp_zone }}"
@@ -30,10 +31,45 @@
 - name: Create a LB Backend Service and add into the Master Instance Group
   google.cloud.gcp_compute_backend_service:
     name: "{{ lb_backend_service }}"
+    enable_cdn: "false"
     backends:
-    - group: "{{ master_instance_group }}"
+      - group: "{{ master_instance_group }}"
+        balancing_mode: "CONNECTION"
+        max_connections_per_instance: "100"
+    port_name: "{{ inst_group_port_name }}"
     health_checks:
-    - "{{ health_check_lb }}"
+      - "{{ health_check_lb }}"
+    protocol: "SSL"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: present
+  register: lb_backend_service_generated
+
+- name: Fetch the SSL Cert and Key from files
+  set_fact:
+    sslcert_osd_lb_crt: "{{lookup('ansible.builtin.file', '/tmp/sslcert-osd.crt') }}"
+    sslcert_osd_lb_key: "{{lookup('ansible.builtin.file', '/tmp/sslcert-osd.key') }}"
+  no_log: true
+
+- name: Create a SSL Certificate
+  google.cloud.gcp_compute_ssl_certificate:
+    name: "{{ ssl_cert_lb }}"
+    description: "SSL Certificate"
+    certificate: "{{ sslcert_osd_lb_crt }}"
+    private_key: "{{ sslcert_osd_lb_key }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: present
+  register: sslcert
+
+- name: Create a target SSL proxy
+  google.cloud.gcp_compute_target_ssl_proxy:
+    name: "{{ target_ssl_proxy_lb }}"
+    ssl_certificates:
+      - "{{ sslcert }}"
+    service: "{{ lb_backend_service_generated }}"
     project: "{{ gcp_project }}"
     auth_kind: "{{ gcp_auth_kind }}"
     service_account_file: "{{ sa_file }}"

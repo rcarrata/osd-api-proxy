@@ -1,13 +1,21 @@
 ---
+cluster_name_prefix: "poc-orange"
 
-cluster_name_prefix: "mobb-osd"
-
-gcp_zone: "europe-west4-a"
+gcp_zone: "us-east1-b"
 gcp_project: "mobb-demo"
 gcp_auth_kind: "serviceaccount"
 sa_file: "~/.ssh/id_rsa_sa.json"
 
 # Instance Group Port Name
 inst_group_port_name: "https"
+
 # Load Balancer Backend Service for Proxy
 lb_backend_service: "ssl-osd-lb"
+
+# SSL Certificate for the LB
+ssl_cert_lb: "{{ lb_backend_service }}-ssl-cert"
+# sslcert_osd_lb_crt_file: "/tmp/sslcert-osd.crt"
+# sslcert_osd_lb_key: "/tmp/sslcert-osd.key"
+
+# Target SSL Proxy
+target_ssl_proxy_lb: "{{ lb_backend_service }}-target-proxy"

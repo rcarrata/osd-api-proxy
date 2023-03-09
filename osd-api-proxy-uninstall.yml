@@ -1,0 +1,11 @@
+---
+- name: "OSD in GCP Install and Config"
+  hosts: localhost
+  # vars_files:
+  #   - vault/vault.yml
+  #   - vars/common.yml
+  #   - "vars/{{ lab_name }}.yml"
+  tasks:
+    - name: OSD in GCP - Delete and Config LB Infra
+      import_tasks:
+        file: "roles/osd-proxy-infra/tasks/gcp-infra-uninstall.yml"

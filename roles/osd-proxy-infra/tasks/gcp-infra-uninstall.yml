@@ -1,0 +1,95 @@
+- name: Obtain all the Master Instance Groups
+  gcp_compute_instance_group_info:
+    zone: "{{ gcp_zone }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+  register: master_instance_group_raw
+
+- name: Select the proper Master Instance Group
+  set_fact:
+    master_instance_group: "{{ item.selfLink }}"
+  loop: "{{ master_instance_group_raw.resources }}"
+  when: '"{{ cluster_name_prefix }}" in item.name'
+
+- name: Find the Health Check
+  gcp_compute_health_check_info:
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+  register: health_check_lb_raw
+
+- name: Select the proper LB
+  set_fact:
+    health_check_lb: "{{ item.selfLink }}"
+  loop: "{{ health_check_lb_raw.resources }}"
+  when: '"{{ cluster_name_prefix }}" in item.name'
+
+- name: Delete a Global Forwarding Rule LB
+  google.cloud.gcp_compute_global_forwarding_rule:
+    name: "{{ global_forwarding_rule_name }}"
+    ip_address: "{{ global_external_address.address }}"
+    ip_protocol: TCP
+    port_range: 443-443
+    target: "{{ sslproxy.selfLink }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: absent
+  register: global_fw_rule
+
+- name: Delete a Global External IP address
+  google.cloud.gcp_compute_global_address:
+    name: "{{ global_external_address_name }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    ip_version: "IPV4"
+    state: absent
+  register: global_external_address
+
+- name: Delete a target SSL proxy
+  google.cloud.gcp_compute_target_ssl_proxy:
+    name: "{{ target_ssl_proxy_lb }}"
+    ssl_certificates:
+      - "{{ sslcert }}"
+    service: "{{ lb_backend_service_generated }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: absent
+  register: sslproxy
+
+- name: Delete a SSL Certificate
+  google.cloud.gcp_compute_ssl_certificate:
+    name: "{{ ssl_cert_lb }}"
+    description: "SSL Certificate"
+    certificate: "{{ sslcert_osd_lb_crt }}"
+    private_key: "{{ sslcert_osd_lb_key }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: absent
+  register: sslcert
+
+- name: Delete a LB Backend Service and add into the Master Instance Group
+  google.cloud.gcp_compute_backend_service:
+    name: "{{ lb_backend_service }}"
+    enable_cdn: "false"
+    backends:
+      - group: "{{ master_instance_group }}"
+        balancing_mode: "CONNECTION"
+        max_connections_per_instance: "100"
+    port_name: "{{ inst_group_port_name }}"
+    health_checks:
+      - "{{ health_check_lb }}"
+    protocol: "SSL"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: absent
+  register: lb_backend_service_generated
+
+- name: Delete DNS Record Type A
+  debug:
+    msg: "You need to delete a DNS record of type A with the global static IP address: {{ global_external_address.address }}"

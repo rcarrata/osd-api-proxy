@@ -1,1 +1,4 @@
 ---
+- name: Generate Let's Encrypt Certificate (CertBot or others)
+  debug:
+    msg: "Be sure to generate the certificate using certbot for your cluster - certbot certonly --manual -d <domain> --preferred-challenges dns --preferred-chain 'ISRG Root X1'"

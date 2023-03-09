@@ -74,3 +74,31 @@
     auth_kind: "{{ gcp_auth_kind }}"
     service_account_file: "{{ sa_file }}"
     state: present
+  register: sslproxy
+
+- name: Create a Global External IP address
+  google.cloud.gcp_compute_global_address:
+    name: "{{ global_external_address_name }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    ip_version: "IPV4"
+    state: present
+  register: global_external_address
+
+- name: Create a Global Forwarding Rule LB
+  google.cloud.gcp_compute_global_forwarding_rule:
+    name: "{{ global_forwarding_rule_name }}"
+    ip_address: "{{ global_external_address.address }}"
+    ip_protocol: TCP
+    port_range: 443-443
+    target: "{{ sslproxy.selfLink }}"
+    project: "{{ gcp_project }}"
+    auth_kind: "{{ gcp_auth_kind }}"
+    service_account_file: "{{ sa_file }}"
+    state: present
+  register: global_fw_rule
+
+- name: Generate DNS Record Type A
+  debug:
+    msg: "You need to create a DNS record of type A with the global static IP address: {{ global_external_address.address }}"

@@ -19,3 +19,10 @@ ssl_cert_lb: "{{ lb_backend_service }}-ssl-cert"
 
 # Target SSL Proxy
 target_ssl_proxy_lb: "{{ lb_backend_service }}-target-proxy"
+
+# Global External IP Address
+global_external_address_name: "{{ lb_backend_service }}-global-external"
+global_external_address_type: "EXTERNAL"
+
+# Global Forwarding Rule
+global_forwarding_rule_name: "{{ lb_backend_service }}-forwarding-rule-lb"
